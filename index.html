@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>BlockCraft Web - Ultimate Scratch Editor V6</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* =========================================
+       基本設定・レイアウト
+       ========================================= */
+    :root {
+      --bg-dark: #1e1e1e; --bg-panel: #252526; --bg-canvas: #181818;
+      --text-main: #d4d4d4; --accent: #007acc; --border: #3e3e42;
+      /* Scratch準拠カテゴリカラー */
+      --cat-root: #ffab19; --cat-metadata: #ff8c1a; --cat-sections: #4c97ff;
+      --cat-grouping: #5cb712; --cat-text: #9966ff; --cat-edits: #cf63cf;
+      --cat-embedded: #ff6680; --cat-tabular: #e6a23c; --cat-forms: #ff4d4d;
+      --cat-interactive: #0fbdac; --cat-css-rule: #00c4b6; --cat-css: #3498db;
+      --cat-js-rule: #e91e63; --cat-js: #9c27b0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* =========================================
+       ヘッダー
+       ========================================= */
+    #header { height: 50px; background: #333; display: flex; align-items: center; padding: 0 15px; gap: 15px; border-bottom: 1px solid var(--border); z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+    .logo { font-size: 16px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .meta-inputs { display: flex; gap: 10px; flex: 1; }
+    .meta-inputs input { background: #1e1e1e; border: 1px solid #555; color: #fff; padding: 4px 8px; font-size: 12px; border-radius: 4px; outline: none; }
+    .meta-inputs input:focus { border-color: var(--accent); }
+    #project-title { width: 180px; } #project-desc { width: 250px; }
+    .header-btn { background: #444; border: none; color: #fff; padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
+    .header-btn:hover { background: #555; }
+    .btn-share { background: #ffab19; color: #000; } .btn-share:hover { background: #e09612; }
+    .btn-search { background: #4c97ff; } .btn-search:hover { background: #3b76c7; }
+    .btn-preview { background: #5cb712; } .btn-preview:hover { background: #4a930e; }
+
+    /* =========================================
+       メインエリア (3カラム)
+       ========================================= */
+    #main-area { display: flex; flex: 1; overflow: hidden; }
+
+    /* 左カラム: パレット */
+    #sidebar { width: 280px; background: var(--bg-panel); display: flex; flex-direction: column; border-right: 1px solid var(--border); z-index: 10; }
+    .tabs { display: flex; background: #2d2d2d; }
+    .tab { flex: 1; padding: 8px; text-align: center; font-size: 10px; font-weight: bold; color: #888; cursor: pointer; border-bottom: 2px solid transparent; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tab.active { color: #fff; border-bottom: 2px solid var(--cat-sections); background: var(--bg-panel); }
+    #palette { flex: 1; overflow-y: auto; padding: 15px 10px 50px 10px; display: flex; flex-direction: column; gap: 8px; }
+    .search-box { padding: 8px; background: #2d2d2d; }
+    .search-box input { width: 100%; padding: 4px 8px; font-size: 11px; border-radius: 12px; border: 1px solid #555; background: #1e1e1e; color: #fff; outline: none; }
+
+    /* 中央: キャンバス */
+    #canvas-wrap { flex: 1; position: relative; overflow: hidden; background: var(--bg-canvas); cursor: grab; }
+    #canvas-wrap:active { cursor: grabbing; }
+    #canvas { position: absolute; top: 0; left: 0; width: 6000px; height: 6000px; transform-origin: 0 0; background-image: radial-gradient(#444 1px, transparent 1px); background-size: 20px 20px; }
+    
+    .canvas-controls { position: absolute; bottom: 15px; right: 15px; display: flex; gap: 5px; background: rgba(0,0,0,0.6); padding: 5px; border-radius: 6px; z-index: 1000; }
+    .zoom-btn { background: #444; border: none; color: white; width: 28px; height: 28px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; }
+    #zoom-val { color: #fff; font-size: 11px; display: flex; align-items: center; margin: 0 5px; width: 35px; justify-content: center;}
+    #trash-bin { position: absolute; bottom: 20px; left: 20px; width: 60px; height: 60px; background: rgba(0,0,0,0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #888; font-size: 24px; z-index: 100; transition: 0.2s; border: 2px dashed #555; }
+    #trash-bin.drag-hover { background: rgba(255, 60, 60, 0.3); color: #ff4d4d; border-color: #ff4d4d; transform: scale(1.1); }
+
+    /* 右カラム: プレビュー＆コード */
+    #right-panel { width: 350px; background: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
+    .panel-head { padding: 8px 12px; font-size: 11px; font-weight: bold; background: #2d2d2d; border-bottom: 1px solid var(--border); color: #ccc; }
+    #preview-box { flex: 2; background: #fff; margin: 8px; border-radius: 4px; overflow: hidden; position: relative; }
+    #preview-iframe { width: 100%; height: 100%; border: none; background: #fff; }
+    #code-box { flex: 1; margin: 0 8px 8px 8px; background: #1e1e1e; border: 1px solid #444; border-radius: 4px; display: flex; }
+    #code-output { flex: 1; background: transparent; border: none; color: #4ec9b0; font-family: monospace; font-size: 10px; padding: 8px; resize: none; outline: none; }
+
+    /* =========================================
+       ★★ Scratchブロックスタイル (完全密着・隙間ゼロ) ★★
+       ========================================= */
+    .stack { position: absolute; display: flex; flex-direction: column; }
+    .stack.is-dragging { z-index: 9999; pointer-events: none; opacity: 0.9; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.4)); }
+
+    /* すべてのブロック要素は下に-4pxのマージンを持ち、下のブロックが潜り込む */
+    .block { display: flex; flex-direction: column; position: relative; margin-bottom: -4px; z-index: 1; }
+    .block:nth-child(1) { z-index: 100; } .block:nth-child(2) { z-index: 99; }
+    .block:nth-child(3) { z-index: 98; } .block:nth-child(4) { z-index: 97; }
+    .block:nth-child(5) { z-index: 96; } .block:nth-child(6) { z-index: 95; }
+    .block:nth-child(7) { z-index: 94; } .block:nth-child(8) { z-index: 93; }
+    .block:nth-child(9) { z-index: 92; } .block:nth-child(10) { z-index: 91; }
+
+    .block-header {
+      min-height: 34px; padding: 6px 12px;
+      display: flex; align-items: center; gap: 6px;
+      color: #fff; font-size: 11px; font-weight: bold;
+      border-radius: 4px;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.3);
+      position: relative; cursor: grab;
+      border: 1px solid rgba(0,0,0,0.4);
+    }
+    .block-header:active { cursor: grabbing; }
+
+    .block.is-hat > .block-header { border-top-left-radius: 20px; border-top-right-radius: 20px; padding-top: 10px; }
+
+    .block:not(.is-hat) > .block-header::before {
+      content: ''; position: absolute; top: -1px; left: 15px;
+      width: 16px; height: 4px;
+      background: var(--bg-canvas);
+      border-bottom-left-radius: 2px; border-bottom-right-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.3); border-top: none;
+      z-index: 1;
+    }
+    .block + .block > .block-header::before { display: none; }
+    .block-children > .block:first-child > .block-header::before { background: var(--parent-bg); }
+
+    .block-header::after {
+      content: ''; position: absolute; bottom: -5px; left: 15px;
+      width: 16px; height: 5px; background: inherit;
+      border-bottom-left-radius: 2px; border-bottom-right-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.4); border-top: none;
+      z-index: 2;
+    }
+    .block.is-c-block > .block-header::after { display: none; }
+    .block.is-c-block > .block-header .inner-bump {
+      content: ''; position: absolute; bottom: -5px; left: 30px; 
+      width: 16px; height: 5px; background: inherit;
+      border-bottom-left-radius: 2px; border-bottom-right-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.4); border-top: none; z-index: 2;
+    }
+
+    .block.is-c-block > .block-header { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    
+    .block-children-wrap {
+      border-left: 15px solid var(--bg); 
+      min-height: 20px; 
+      border-right: 1px solid rgba(0,0,0,0.4); 
+      box-shadow: inset 1px 0 0 rgba(255,255,255,0.3); 
+      position: relative;
+    }
+    .block-children {
+      display: flex; flex-direction: column;
+      padding-top: 4px; 
+      margin-left: -1px; 
+    }
+
+    .block-footer {
+      height: 20px; width: 140px;
+      background: var(--bg);
+      border-radius: 0 0 4px 4px;
+      border: 1px solid rgba(0,0,0,0.4); border-top: none;
+      position: relative;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,0.3);
+    }
+    .block-footer::after {
+      content: ''; position: absolute; bottom: -5px; left: 15px;
+      width: 16px; height: 5px; background: inherit;
+      border: 1px solid rgba(0,0,0,0.4); border-top: none;
+      border-bottom-left-radius: 2px; border-bottom-right-radius: 2px; z-index: 2;
+    }
+
+    /* --- 入力UI --- */
+    .val-input {
+      background: #fff; border: 1px solid rgba(0,0,0,0.3);
+      border-radius: 12px; color: #000; padding: 3px 8px; font-size: 11px;
+      outline: none; width: 85px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+      pointer-events: auto; 
+    }
+    .val-input:focus { border-color: #007acc; box-shadow: 0 0 0 2px rgba(0,122,204,0.3); }
+    .label-text { white-space: nowrap; pointer-events: none; text-shadow: 1px 1px 0 rgba(0,0,0,0.3); }
+    .prefix-label { color: #fff; font-family: monospace; font-size: 13px; font-weight: 900; margin-right: 2px; text-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
+    select.val-input { padding: 2px 6px; border-radius: 12px; cursor: pointer; }
+    input[type="color"].val-input { padding: 0; width: 32px; height: 20px; border-radius: 10px; cursor: pointer; }
+
+    /* ハイライト */
+    .block.selected > .block-header, .block.selected > .block-children-wrap, .block.selected > .block-footer { 
+      filter: brightness(1.15); box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(255,255,255,0.6); z-index: 1000; 
+    }
+    #snap-indicator { position: absolute; height: 5px; width: 140px; background: rgba(255, 255, 255, 0.8); border-radius: 3px; z-index: 9999; pointer-events: none; display: none; box-shadow: 0 0 8px rgba(255,255,255,0.8); }
+
+    /* カテゴリカラー適用 */
+    .bg-root { --bg: var(--cat-root); } .bg-metadata { --bg: var(--cat-metadata); }
+    .bg-sections { --bg: var(--cat-sections); } .bg-grouping { --bg: var(--cat-grouping); }
+    .bg-text { --bg: var(--cat-text); } .bg-edits { --bg: var(--cat-edits); }
+    .bg-embedded { --bg: var(--cat-embedded); } .bg-tabular { --bg: var(--cat-tabular); }
+    .bg-forms { --bg: var(--cat-forms); } .bg-interactive { --bg: var(--cat-interactive); }
+    .bg-css-rule { --bg: var(--cat-css-rule); } .bg-css { --bg: var(--cat-css); }
+    .bg-js-rule { --bg: var(--cat-js-rule); } .bg-js { --bg: var(--cat-js); }
+    .block-header, .block-footer { background: var(--bg); }
+
+    /* ギャラリーモーダル */
+    #gallery-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: none; flex-direction: column; }
+    .gallery-head { padding: 20px 40px; background: #222; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; }
+    .gallery-head h2 { color: #fff; font-size: 24px; }
+    .gallery-head input { padding: 10px 20px; font-size: 16px; width: 400px; border-radius: 30px; border: none; outline: none; background: #333; color: #fff; }
+    .btn-close { background: transparent; color: #fff; font-size: 30px; border: none; cursor: pointer; }
+    .gallery-grid { padding: 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; overflow-y: auto; flex: 1; }
+    .project-card { background: #2d2d2d; border-radius: 12px; padding: 20px; border: 1px solid #444; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
+    .project-card:hover { transform: translateY(-5px); border-color: var(--cat-sections); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+    .project-card h3 { color: #fff; font-size: 18px; margin-bottom: 8px; }
+    .project-card p { color: #aaa; font-size: 12px; line-height: 1.5; margin-bottom: 15px; height: 36px; overflow: hidden; }
+  </style>
+</head>
+<body>
+
+  <header id="header">
+    <div class="logo"><i class="fa-solid fa-cubes"></i> BlockCraft V6 (JS動き・同期完全版)</div>
+    <div class="meta-inputs">
+      <input type="text" id="project-title" placeholder="作品のタイトル...">
+      <input type="text" id="project-desc" placeholder="作品の説明をここに書く...">
+    </div>
+    <button class="header-btn btn-share" id="btn-save"><i class="fa-solid fa-cloud-arrow-up"></i> 保存・共有</button>
+    <button class="header-btn btn-search" id="btn-explore"><i class="fa-solid fa-magnifying-glass"></i> 作品を探す</button>
+    <div style="width: 1px; height: 20px; background: #666; margin: 0 5px;"></div>
+    <button class="header-btn btn-preview" id="btn-fullscreen"><i class="fa-solid fa-expand"></i> 全画面で見る</button>
+  </header>
+
+  <main id="main-area">
+    <aside id="sidebar">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('html')">HTML要素</div>
+        <div class="tab" onclick="switchTab('css')">CSSデザイン</div>
+        <div class="tab" onclick="switchTab('js')">JS動き</div>
+      </div>
+      <div class="search-box">
+        <input type="text" id="search-palette" placeholder="ブロックを検索..." oninput="renderPalette()">
+      </div>
+      <div id="palette"></div>
+    </aside>
+
+    <section id="canvas-wrap">
+      <div id="canvas"></div>
+      <div id="snap-indicator"></div>
+      <div id="trash-bin"><i class="fa-solid fa-trash-can"></i></div>
+      <div class="canvas-controls">
+        <button class="zoom-btn" onclick="adjustZoom(-0.1)">-</button>
+        <span id="zoom-val">100%</span>
+        <button class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
+      </div>
+    </section>
+
+    <aside id="right-panel">
+      <div class="panel-head">リアルタイムプレビュー</div>
+      <div id="preview-box"><iframe id="preview-iframe"></iframe></div>
+      <div class="panel-head">自動生成 HTML/CSS/JS</div>
+      <div id="code-box"><textarea id="code-output" readonly></textarea></div>
+    </aside>
+  </main>
+
+  <!-- ギャラリーモーダル -->
+  <div id="gallery-modal">
+    <div class="gallery-head">
+      <h2><i class="fa-solid fa-compass"></i> みんなの作品</h2>
+      <input type="text" id="gallery-search" placeholder="作品名で検索...">
+      <button class="btn-close" onclick="closeGallery()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0b_D4rD1NZWuGIEgaergbmiG_3GQURVo",
+      authDomain: "kyaraatume.firebaseapp.com",
+      databaseURL: "https://kyaraatume-default-rtdb.firebaseio.com",
+      projectId: "kyaraatume",
+      storageBucket: "kyaraatume.firebasestorage.app"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // ==========================================
+    // ★★ html.json 全117種 完全網羅・翻訳辞書 ★★
+    // ==========================================
+    const HTML_DICT = {
+      "id-wrapper": { c: "grouping", s: "c-block", l: "IDを付与する(囲う)", p: "#" },
+      "class-wrapper": { c: "grouping", s: "c-block", l: "Classを付与する(囲う)", p: "." },
+      "html": { c: "root", s: "c-block", h: true, l: "Webサイト全体" },
+      "head": { c: "metadata", s: "c-block", l: "裏設定(Head)" },
+      "title": { c: "metadata", s: "stack", l: "タブのタイトル", i: true },
+      "base": { c: "metadata", s: "stack", l: "基準URL", a: "URL" },
+      "link": { c: "metadata", s: "stack", l: "外部ファイル読込", a: "URL" },
+      "meta": { c: "metadata", s: "stack", l: "メタ情報", a: "内容" },
+      "style": { c: "metadata", s: "c-block", l: "デザインを書く場所" },
+      "body": { c: "sections", s: "c-block", l: "画面の中身(Body)" },
+      "article": { c: "sections", s: "c-block", l: "独立した記事" },
+      "section": { c: "sections", s: "c-block", l: "大きなグループ" },
+      "nav": { c: "sections", s: "c-block", l: "案内メニュー" },
+      "aside": { c: "sections", s: "c-block", l: "サイドバー" },
+      "h1": { c: "sections", s: "stack", l: "大見出し(重要)", i: true },
+      "h2": { c: "sections", s: "stack", l: "中見出し", i: true },
+      "h3": { c: "sections", s: "stack", l: "小見出し", i: true },
+      "h4": { c: "sections", s: "stack", l: "さらに小さい見出し", i: true },
+      "h5": { c: "sections", s: "stack", l: "極小見出し1", i: true },
+      "h6": { c: "sections", s: "stack", l: "極小見出し2", i: true },
+      "hgroup": { c: "sections", s: "c-block", l: "見出しのまとめ" },
+      "header": { c: "sections", s: "c-block", l: "ページの頭" },
+      "footer": { c: "sections", s: "c-block", l: "ページの足" },
+      "address": { c: "sections", s: "c-block", l: "連絡先・住所" },
+      "p": { c: "grouping", s: "stack", l: "ふつうの文章(段落)", i: true },
+      "hr": { c: "grouping", s: "stack", l: "ヨコの区切り線" },
+      "pre": { c: "grouping", s: "c-block", l: "書いた通りに表示" },
+      "blockquote": { c: "grouping", s: "c-block", l: "長文の引用" },
+      "ol": { c: "grouping", s: "c-block", l: "番号つきリスト" },
+      "ul": { c: "grouping", s: "c-block", l: "箇条書きリスト枠" },
+      "menu": { c: "grouping", s: "c-block", l: "操作メニュー" },
+      "li": { c: "grouping", s: "stack", l: "リストの1項目", i: true },
+      "dl": { c: "grouping", s: "c-block", l: "説明つきリスト" },
+      "dt": { c: "grouping", s: "stack", l: "説明したい言葉", i: true },
+      "dd": { c: "grouping", s: "stack", l: "言葉の詳しい説明", i: true },
+      "figure": { c: "grouping", s: "c-block", l: "図表と説明のセット" },
+      "figcaption": { c: "grouping", s: "stack", l: "図表のタイトル", i: true },
+      "main": { c: "grouping", s: "c-block", l: "メイン内容" },
+      "search": { c: "grouping", s: "c-block", l: "検索エリア" },
+      "div": { c: "grouping", s: "c-block", l: "グループ箱(Div)" },
+      "a": { c: "text", s: "stack", l: "ジャンプリンク", i: true, a: "URL" },
+      "em": { c: "text", s: "stack", l: "少し強調(斜め)", i: true },
+      "strong": { c: "text", s: "stack", l: "超重要(太文字)", i: true },
+      "small": { c: "text", s: "stack", l: "小さな注記文字", i: true },
+      "s": { c: "text", s: "stack", l: "取り消し線", i: true },
+      "cite": { c: "text", s: "stack", l: "作品のタイトル", i: true },
+      "q": { c: "text", s: "stack", l: "短いセリフ引用", i: true },
+      "dfn": { c: "text", s: "stack", l: "用語の定義", i: true },
+      "abbr": { c: "text", s: "stack", l: "略語", i: true },
+      "ruby": { c: "text", s: "c-block", l: "ふりがな枠" },
+      "rt": { c: "text", s: "stack", l: "ふりがなの文字", i: true },
+      "rp": { c: "text", s: "stack", l: "ふりがな非対応カッコ", i: true },
+      "data": { c: "text", s: "stack", l: "機械用データ", i: true },
+      "time": { c: "text", s: "stack", l: "日付・時間", i: true },
+      "code": { c: "text", s: "stack", l: "コード文字", i: true },
+      "var": { c: "text", s: "stack", l: "数式の変数", i: true },
+      "samp": { c: "text", s: "stack", l: "出力見本", i: true },
+      "kbd": { c: "text", s: "stack", l: "キーボード入力", i: true },
+      "sub": { c: "text", s: "stack", l: "下につく小文字", i: true },
+      "sup": { c: "text", s: "stack", l: "上につく小文字", i: true },
+      "i": { c: "text", s: "stack", l: "特別な言葉(斜体)", i: true },
+      "b": { c: "text", s: "stack", l: "目を引く太字", i: true },
+      "u": { c: "text", s: "stack", l: "意味のある下線", i: true },
+      "mark": { c: "text", s: "stack", l: "蛍光ペン", i: true },
+      "bdi": { c: "text", s: "stack", l: "文字向き隔離", i: true },
+      "bdo": { c: "text", s: "stack", l: "文字強制逆読み", i: true },
+      "span": { c: "text", s: "stack", l: "一部だけ変える(Span)", i: true },
+      "br": { c: "text", s: "stack", l: "強制改行" },
+      "wbr": { c: "text", s: "stack", l: "改行おすすめスポット" },
+      "ins": { c: "edits", s: "stack", l: "追加した文章", i: true },
+      "del": { c: "edits", s: "stack", l: "消された文章", i: true },
+      "picture": { c: "embedded", s: "c-block", l: "賢い画像切替箱" },
+      "source": { c: "embedded", s: "stack", l: "メディア候補", a: "URL" },
+      "img": { c: "embedded", s: "stack", l: "画像・写真", a: "画像URL" },
+      "iframe": { c: "embedded", s: "stack", l: "他サイト埋め込み", a: "URL" },
+      "embed": { c: "embedded", s: "stack", l: "外部プラグイン", a: "URL" },
+      "object": { c: "embedded", s: "c-block", l: "外部データ埋め込み" },
+      "video": { c: "embedded", s: "c-block", l: "動画プレイヤー" },
+      "audio": { c: "embedded", s: "c-block", l: "音楽プレイヤー" },
+      "track": { c: "embedded", s: "stack", l: "字幕データ", a: "URL" },
+      "map": { c: "embedded", s: "c-block", l: "クリッカブルマップ" },
+      "area": { c: "embedded", s: "stack", l: "クリックエリア形", a: "リンク" },
+      "table": { c: "tabular", s: "c-block", l: "表(テーブル)全体" },
+      "caption": { c: "tabular", s: "stack", l: "表のタイトル", i: true },
+      "colgroup": { c: "tabular", s: "c-block", l: "表のタテ列まとめ" },
+      "col": { c: "tabular", s: "stack", l: "表のタテ1列設定" },
+      "tbody": { c: "tabular", s: "c-block", l: "表の中身データ" },
+      "thead": { c: "tabular", s: "c-block", l: "表のヘッダー行" },
+      "tfoot": { c: "tabular", s: "c-block", l: "表のフッター行" },
+      "tr": { c: "tabular", s: "c-block", l: "表のヨコ1行" },
+      "td": { c: "tabular", s: "stack", l: "表の1マス", i: true },
+      "th": { c: "tabular", s: "stack", l: "表の見出し1マス", i: true },
+      "form": { c: "forms", s: "c-block", l: "送信フォーム枠" },
+      "label": { c: "forms", s: "c-block", l: "入力欄ラベル" },
+      "input": { c: "forms", s: "stack", l: "文字入力欄", a: "タイプ(text等)" },
+      "button": { c: "forms", s: "stack", l: "ボタン", i: true },
+      "select": { c: "forms", s: "c-block", l: "ドロップダウン" },
+      "datalist": { c: "forms", s: "c-block", l: "入力のヒント候補" },
+      "optgroup": { c: "forms", s: "c-block", l: "選択肢のグループ" },
+      "option": { c: "forms", s: "stack", l: "1個の選択肢", i: true },
+      "textarea": { c: "forms", s: "stack", l: "長文入力欄", i: true },
+      "output": { c: "forms", s: "stack", l: "計算結果表示", i: true },
+      "progress": { c: "forms", s: "stack", l: "進捗バー" },
+      "meter": { c: "forms", s: "stack", l: "メーター" },
+      "fieldset": { c: "forms", s: "c-block", l: "フォーム枠線囲み" },
+      "legend": { c: "forms", s: "stack", l: "囲みタイトル", i: true },
+      "details": { c: "interactive", s: "c-block", l: "開閉アコーディオン" },
+      "summary": { c: "interactive", s: "stack", l: "アコーディオン見出し", i: true },
+      "dialog": { c: "interactive", s: "c-block", l: "ポップアップ窓" },
+      "script": { c: "scripting", s: "c-block", l: "プログラムの部屋" },
+      "noscript": { c: "scripting", s: "c-block", l: "非対応時の表示" },
+      "canvas": { c: "scripting", s: "stack", l: "お絵かきキャンバス", a: "ID" },
+      "slot": { c: "components", s: "c-block", l: "入れ替えスロット" },
+      "template": { c: "components", s: "c-block", l: "コピー元金型" }
+    };
+
+    // ==========================================
+    // ★★ css.json 全122種 完全網羅・翻訳辞書 ★★
+    // ==========================================
+    const CSS_DICT = {
+      "css-id": { c: "css-rule", type: "css-rule", s: "c-block", h: true, l: "IDのデザイン", p: "#" },
+      "css-class": { c: "css-rule", type: "css-rule", s: "c-block", h: true, l: "Classのデザイン", p: "." },
+      "css-tag": { c: "css-rule", type: "css-rule", s: "c-block", h: true, l: "タグのデザイン" },
+
+      "align-content": { c: "css", s: "stack", l: "複数行の縦揃え" },
+      "align-items": { c: "css", s: "stack", l: "アイテム縦揃え", ch: ["stretch","center","flex-start","flex-end"] },
+      "align-self": { c: "css", s: "stack", l: "自分だけの縦揃え" },
+      "all": { c: "css", s: "stack", l: "全てのリセット" },
+      "animation": { c: "css", s: "stack", l: "アニメーションまとめ" },
+      "animation-delay": { c: "css", s: "stack", l: "アニメ開始待ち時間" },
+      "animation-direction": { c: "css", s: "stack", l: "アニメ再生方向" },
+      "animation-duration": { c: "css", s: "stack", l: "アニメ1周の時間" },
+      "animation-fill-mode": { c: "css", s: "stack", l: "アニメ前後の状態" },
+      "animation-iteration-count": { c: "css", s: "stack", l: "アニメリピート回数" },
+      "animation-name": { c: "css", s: "stack", l: "アニメの動き名" },
+      "animation-play-state": { c: "css", s: "stack", l: "アニメ一時停止/再生" },
+      "animation-timing-function": { c: "css", s: "stack", l: "アニメの緩急" },
+      "aspect-ratio": { c: "css", s: "stack", l: "縦横の比率" },
+      "backface-visibility": { c: "css", s: "stack", l: "裏面の表示" },
+      "background": { c: "css", s: "stack", l: "背景まとめ" },
+      "background-attachment": { c: "css", s: "stack", l: "背景画像の固定" },
+      "background-blend-mode": { c: "css", s: "stack", l: "背景の混ざり方" },
+      "background-clip": { c: "css", s: "stack", l: "背景のくり抜き" },
+      "background-color": { c: "css", s: "stack", l: "背景色", vType: "color" },
+      "background-image": { c: "css", s: "stack", l: "背景画像URL" },
+      "background-origin": { c: "css", s: "stack", l: "背景画像の基準" },
+      "background-position": { c: "css", s: "stack", l: "背景画像の位置" },
+      "background-repeat": { c: "css", s: "stack", l: "背景画像の繰り返し" },
+      "background-size": { c: "css", s: "stack", l: "背景画像のサイズ" },
+      "border": { c: "css", s: "stack", l: "枠線のまとめ" },
+      "border-bottom": { c: "css", s: "stack", l: "下の枠線" },
+      "border-bottom-color": { c: "css", s: "stack", l: "下の枠線の色", vType: "color" },
+      "border-bottom-left-radius": { c: "css", s: "stack", l: "左下の丸み" },
+      "border-bottom-right-radius": { c: "css", s: "stack", l: "右下の丸み" },
+      "border-bottom-style": { c: "css", s: "stack", l: "下の枠線の種類" },
+      "border-bottom-width": { c: "css", s: "stack", l: "下の枠線の太さ" },
+      "border-collapse": { c: "css", s: "stack", l: "表の線の重なり" },
+      "border-color": { c: "css", s: "stack", l: "枠線の色", vType: "color" },
+      "border-image": { c: "css", s: "stack", l: "枠線画像" },
+      "border-image-outset": { c: "css", s: "stack", l: "枠線画像のはみ出し" },
+      "border-image-repeat": { c: "css", s: "stack", l: "枠線画像の繰り返し" },
+      "border-image-slice": { c: "css", s: "stack", l: "枠線画像の切り分け" },
+      "border-image-source": { c: "css", s: "stack", l: "枠線画像のURL" },
+      "border-image-width": { c: "css", s: "stack", l: "枠線画像の太さ" },
+      "border-left": { c: "css", s: "stack", l: "左の枠線" },
+      "border-left-color": { c: "css", s: "stack", l: "左の枠線の色", vType: "color" },
+      "border-left-style": { c: "css", s: "stack", l: "左の枠線の種類" },
+      "border-left-width": { c: "css", s: "stack", l: "左の枠線の太さ" },
+      "border-radius": { c: "css", s: "stack", l: "カドの丸み" },
+      "border-right": { c: "css", s: "stack", l: "右の枠線" },
+      "border-right-color": { c: "css", s: "stack", l: "右の枠線の色", vType: "color" },
+      "border-right-style": { c: "css", s: "stack", l: "右の枠線の種類" },
+      "border-right-width": { c: "css", s: "stack", l: "右の枠線の太さ" },
+      "border-spacing": { c: "css", s: "stack", l: "表マスのスキマ" },
+      "border-style": { c: "css", s: "stack", l: "枠線の種類" },
+      "border-top": { c: "css", s: "stack", l: "上の枠線" },
+      "border-top-color": { c: "css", s: "stack", l: "上の枠線の色", vType: "color" },
+      "border-top-left-radius": { c: "css", s: "stack", l: "左上の丸み" },
+      "border-top-right-radius": { c: "css", s: "stack", l: "右上の丸み" },
+      "border-top-style": { c: "css", s: "stack", l: "上の枠線の種類" },
+      "border-top-width": { c: "css", s: "stack", l: "上の枠線の太さ" },
+      "border-width": { c: "css", s: "stack", l: "枠線の太さ" },
+      "bottom": { c: "css", s: "stack", l: "下からの位置" },
+      "box-shadow": { c: "css", s: "stack", l: "箱のカゲ" },
+      "box-sizing": { c: "css", s: "stack", l: "サイズ計算ルール" },
+      "caption-side": { c: "css", s: "stack", l: "表タイトルの位置" },
+      "clear": { c: "css", s: "stack", l: "回り込み解除" },
+      "clip": { c: "css", s: "stack", l: "古い切り抜き" },
+      "clip-path": { c: "css", s: "stack", l: "自由な形のくり抜き" },
+      "color": { c: "css", s: "stack", l: "文字色", vType: "color" },
+      "column-count": { c: "css", s: "stack", l: "段組みの数" },
+      "column-fill": { c: "css", s: "stack", l: "段組みの埋め方" },
+      "column-gap": { c: "css", s: "stack", l: "段組みのスキマ" },
+      "column-rule": { c: "css", s: "stack", l: "段組みの線まとめ" },
+      "column-rule-color": { c: "css", s: "stack", l: "段組みの線の色", vType: "color" },
+      "column-rule-style": { c: "css", s: "stack", l: "段組みの線の種類" },
+      "column-rule-width": { c: "css", s: "stack", l: "段組みの線の太さ" },
+      "column-span": { c: "css", s: "stack", l: "段組みまたぎ" },
+      "column-width": { c: "css", s: "stack", l: "段組みの最小幅" },
+      "columns": { c: "css", s: "stack", l: "段組みまとめ" },
+      "content": { c: "css", s: "stack", l: "追加する文字内容" },
+      "counter-increment": { c: "css", s: "stack", l: "自動カウントUP" },
+      "counter-reset": { c: "css", s: "stack", l: "自動カウントリセット" },
+      "cursor": { c: "css", s: "stack", l: "マウスカーソル形" },
+      "direction": { c: "css", s: "stack", l: "文字の並び方向" },
+      "display": { c: "css", s: "stack", l: "表示ルール", ch: ["block","flex","grid","none"] },
+      "empty-cells": { c: "css", s: "stack", l: "空マスの枠線" },
+      "filter": { c: "css", s: "stack", l: "画像フィルター" },
+      "flex": { c: "css", s: "stack", l: "伸び縮み比率まとめ" },
+      "flex-basis": { c: "css", s: "stack", l: "伸び縮み前の幅" },
+      "flex-direction": { c: "css", s: "stack", l: "並べる向き" },
+      "flex-flow": { c: "css", s: "stack", l: "並べる向きまとめ" },
+      "flex-grow": { c: "css", s: "stack", l: "余白の伸び度" },
+      "flex-shrink": { c: "css", s: "stack", l: "狭い時の縮み度" },
+      "flex-wrap": { c: "css", s: "stack", l: "折り返しルール" },
+      "float": { c: "css", s: "stack", l: "回り込み配置" },
+      "font": { c: "css", s: "stack", l: "文字設定まとめ" },
+      "font-family": { c: "css", s: "stack", l: "フォント種類" },
+      "font-size": { c: "css", s: "stack", l: "文字の大きさ" },
+      "font-size-adjust": { c: "css", s: "stack", l: "フォントサイズ微調整" },
+      "font-stretch": { c: "css", s: "stack", l: "文字の横幅引き伸ばし" },
+      "font-style": { c: "css", s: "stack", l: "文字の斜体" },
+      "font-variant": { c: "css", s: "stack", l: "文字の特殊変換" },
+      "font-weight": { c: "css", s: "stack", l: "文字の太さ", ch: ["normal","bold","900"] },
+      "gap": { c: "css", s: "stack", l: "パーツ同士のスキマ" },
+      "grid": { c: "css", s: "stack", l: "グリッドまとめ" },
+      "grid-area": { c: "css", s: "stack", l: "グリッドエリア名" },
+      "grid-auto-columns": { c: "css", s: "stack", l: "自動増殖列の幅" },
+      "grid-auto-flow": { c: "css", s: "stack", l: "自動マス埋め方向" },
+      "grid-auto-rows": { c: "css", s: "stack", l: "自動増殖行の幅" },
+      "grid-column": { c: "css", s: "stack", l: "ヨコまたぎマス範囲" },
+      "grid-column-end": { c: "css", s: "stack", l: "ヨコまたぎ終了線" },
+      "grid-column-gap": { c: "css", s: "stack", l: "ヨコ列のスキマ" },
+      "grid-column-start": { c: "css", s: "stack", l: "ヨコまたぎ開始線" },
+      "grid-gap": { c: "css", s: "stack", l: "グリッド間隔まとめ" },
+      "grid-row": { c: "css", s: "stack", l: "タテまたぎマス範囲" },
+      "grid-row-end": { c: "css", s: "stack", l: "タテまたぎ終了線" },
+      "grid-row-gap": { c: "css", s: "stack", l: "タテ行のスキマ" },
+      "grid-row-start": { c: "css", s: "stack", l: "タテまたぎ開始線" },
+      "grid-template": { c: "css", s: "stack", l: "マス目設計図まとめ" },
+      "grid-template-areas": { c: "css", s: "stack", l: "名前でマス配置マップ" },
+      "grid-template-columns": { c: "css", s: "stack", l: "列の横幅の設計" },
+      "grid-template-rows": { c: "css", s: "stack", l: "行の縦幅の設計" },
+      "height": { c: "css", s: "stack", l: "タテ幅" },
+      "isolation": { c: "css", s: "stack", l: "色混ざりのリセット" },
+      "justify-content": { c: "css", s: "stack", l: "横 of flex揃え", ch: ["flex-start","center","space-between"] },
+      "justify-items": { c: "css", s: "stack", l: "グリッド横揃え" },
+      "justify-self": { c: "css", s: "stack", l: "自分だけの横揃え" },
+      "left": { c: "css", s: "stack", l: "左からの位置" },
+      "letter-spacing": { c: "css", s: "stack", l: "文字同士のスキマ" },
+      "line-height": { c: "css", s: "stack", l: "行の高さ(行間)" },
+      "list-style": { c: "css", s: "stack", l: "箇条書きマークまとめ" },
+      "list-style-image": { c: "css", s: "stack", l: "箇条書きの画像" },
+      "list-style-position": { c: "css", s: "stack", l: "箇条書きマーク位置" },
+      "list-style-type": { c: "css", s: "stack", l: "箇条書きマーク種類" },
+      "margin": { c: "css", s: "stack", l: "外側のスキマ全体" },
+      "margin-bottom": { c: "css", s: "stack", l: "下の外側スキマ" },
+      "margin-left": { c: "css", s: "stack", l: "左の外側スキマ" },
+      "margin-right": { c: "css", s: "stack", l: "右の外側スキマ" },
+      "margin-top": { c: "css", s: "stack", l: "上の外側スキマ" },
+      "max-height": { c: "css", s: "stack", l: "タテ幅の限界MAX" },
+      "max-width": { c: "css", s: "stack", l: "ヨコ幅の限界MAX" },
+      "min-height": { c: "css", s: "stack", l: "タテ幅の最低保証" },
+      "min-width": { c: "css", s: "stack", l: "ヨコ幅の最低保証" },
+      "mix-blend-mode": { c: "css", s: "stack", l: "重なりのブレンド" },
+      "object-fit": { c: "css", s: "stack", l: "画像の枠への収まり" },
+      "object-position": { c: "css", s: "stack", l: "画像の中心位置" },
+      "opacity": { c: "css", s: "stack", l: "透明度(0〜1)" },
+      "order": { c: "css", s: "stack", l: "並び順の入れ替え" },
+      "outline": { c: "css", s: "stack", l: "外枠線まとめ" },
+      "outline-color": { c: "css", s: "stack", l: "外枠線の色", vType: "color" },
+      "outline-offset": { c: "css", s: "stack", l: "外枠線とのスキマ" },
+      "outline-style": { c: "css", s: "stack", l: "外枠線の種類" },
+      "outline-width": { c: "css", s: "stack", l: "外枠線の太さ" },
+      "overflow": { c: "css", s: "stack", l: "はみ出し時の設定" },
+      "overflow-x": { c: "css", s: "stack", l: "ヨコはみ出し設定" },
+      "overflow-y": { c: "css", s: "stack", l: "タテはみ出し設定" },
+      "padding": { c: "css", s: "stack", l: "内側のスキマ全体" },
+      "padding-bottom": { c: "css", s: "stack", l: "下の内側スキマ" },
+      "padding-left": { c: "css", s: "stack", l: "左の内側スキマ" },
+      "padding-right": { c: "css", s: "stack", l: "右の内側スキマ" },
+      "padding-top": { c: "css", s: "stack", l: "上の内側スキマ" },
+      "perspective": { c: "css", s: "stack", l: "3Dの遠近感" },
+      "perspective-origin": { c: "css", s: "stack", l: "3Dの視点位置" },
+      "place-content": { c: "css", s: "stack", l: "グリッド配置まとめ" },
+      "place-items": { c: "css", s: "stack", l: "中身揃えまとめ" },
+      "place-self": { c: "css", s: "stack", l: "自分揃えまとめ" },
+      "pointer-events": { c: "css", s: "stack", l: "クリックのすり抜け" },
+      "position": { c: "css", s: "stack", l: "配置方法(固定等)", ch: ["static","relative","absolute","fixed"] },
+      "quotes": { c: "css", s: "stack", l: "引用カッコの種類" },
+      "resize": { c: "css", s: "stack", l: "サイズ変更の許可" },
+      "right": { c: "css", s: "stack", l: "右からの位置" },
+      "row-gap": { c: "css", s: "stack", l: "タテ行のスキマ" },
+      "scroll-behavior": { c: "css", s: "stack", l: "スクロールのスムーズ化" },
+      "table-layout": { c: "css", s: "stack", l: "表の幅計算ルール" },
+      "text-align": { c: "css", s: "stack", l: "文字の寄せ方", ch: ["left","center","right"] },
+      "text-align-last": { c: "css", s: "stack", l: "最後の行の寄せ方" },
+      "text-decoration": { c: "css", s: "stack", l: "飾り線まとめ" },
+      "text-decoration-color": { c: "css", s: "stack", l: "飾り線の色", vType: "color" },
+      "text-decoration-line": { c: "css", s: "stack", l: "飾り線の場所" },
+      "text-decoration-style": { c: "css", s: "stack", l: "飾り線の形" },
+      "text-indent": { c: "css", s: "stack", l: "1文字目の字下げ" },
+      "text-justify": { c: "css", s: "stack", l: "均等割付の調整" },
+      "text-overflow": { c: "css", s: "stack", l: "はみ出た文字の省略" },
+      "text-shadow": { c: "css", s: "stack", l: "文字のカゲ" },
+      "text-transform": { c: "css", s: "stack", l: "大文字・小文字変換" },
+      "top": { c: "css", s: "stack", l: "上からの位置" },
+      "transform": { c: "css", s: "stack", l: "変形(回転・拡大)" },
+      "transform-origin": { c: "css", s: "stack", l: "変形の中心軸" },
+      "transform-style": { c: "css", s: "stack", l: "3D空間の引き継ぎ" },
+      "transition": { c: "css", s: "stack", l: "なめらか変化まとめ" },
+      "transition-delay": { c: "css", s: "stack", l: "変化の待ち時間" },
+      "transition-duration": { c: "css", s: "stack", l: "変化にかかる時間" },
+      "transition-property": { c: "css", s: "stack", l: "変化させる対象" },
+      "transition-timing-function": { c: "css", s: "stack", l: "変化の緩急" },
+      "unicode-bidi": { c: "css", s: "stack", l: "文字の方向上書き" },
+      "user-select": { c: "css", s: "stack", l: "文字選択の許可" },
+      "vertical-align": { c: "css", s: "stack", l: "文字のタテ揃え" },
+      "visibility": { c: "css", s: "stack", l: "姿を隠す" },
+      "white-space": { c: "css", s: "stack", l: "改行・スペース処理" },
+      "width": { c: "css", s: "stack", l: "ヨコ幅" },
+      "word-break": { c: "css", s: "stack", l: "単語の端の改行ルール" },
+      "word-spacing": { c: "css", s: "stack", l: "単語間のスキマ" },
+      "word-wrap": { c: "css", s: "stack", l: "長い単語の折り返し" },
+      "writing-mode": { c: "css", s: "stack", l: "縦書き・横書き" },
+      "z-index": { c: "css", s: "stack", l: "重なりの順番" }
+    };
+
+    // ==========================================
+    // ★★ JavaScript (JS動き) 完全網羅・翻訳辞書 ★★
+    // ==========================================
+    const JS_DICT = {
+      // JavaScript ハットブロック
+      "js-click-event": { c: "js-rule", type: "js-rule", s: "c-block", h: true, l: "イベント：[要素]がクリックされたとき", i: true, placeholder: "#id または .class" },
+      "js-hover-event": { c: "js-rule", type: "js-rule", s: "c-block", h: true, l: "イベント：[要素]にマウスが乗ったとき", i: true, placeholder: "#id" },
+      // アクションブロック
+      "js-set-text": { c: "js", type: "js", s: "stack", l: "[対象] の文字を [文字] にする", i: true, i2: true, placeholder: "#id", placeholder2: "こんにちは" },
+      "js-set-style": { c: "js", type: "js", s: "stack", l: "[対象] のデザイン [プロパティ] を [値] にする", i: true, i2: true, i3: true, placeholder: "#id", placeholder2: "color", placeholder3: "red" },
+      "js-hide": { c: "js", type: "js", s: "stack", l: "[対象] を画面から消す (隠す)", i: true, placeholder: "#id" },
+      "js-show": { c: "js", type: "js", s: "stack", l: "[対象] を画面に出す (表示)", i: true, placeholder: "#id" },
+      "js-alert": { c: "js", type: "js", s: "stack", l: "警告メッセージ [文字] を表示する", i: true, placeholder: "警告メッセージ" },
+      "js-toggle-class": { c: "js", type: "js", s: "stack", l: "[対象] のクラス [クラス名] をトグル(切替)する", i: true, i2: true, placeholder: "#id", placeholder2: "active" }
+    };
+
+    // ==========================================
+    // 状態管理 & 2Dキャンバス操作
+    // ==========================================
+    let stacks = []; 
+    let currentTab = 'html';
+    let scale = 1.0;
+    let panX = 0, panY = 0;
+    
+    let isDragging = false;
+    let dragStackId = null;
+    let offsetX = 0, offsetY = 0;
+    let snapTarget = null;
+    let selectedId = null;
+    let activeProjectId = null;
+
+    const canvas = document.getElementById('canvas');
+    const canvasWrap = document.getElementById('canvas-wrap');
+    const snapIndicator = document.getElementById('snap-indicator');
+
+    window.adjustZoom = (delta) => {
+      scale = Math.max(0.5, Math.min(2.0, scale + delta));
+      document.getElementById('zoom-val').innerText = `${Math.round(scale*100)}%`;
+      updateCanvasTransform();
+    };
+    function updateCanvasTransform() { canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
+
+    let isPanning = false, sX, sY;
+    canvasWrap.addEventListener('mousedown', (e) => {
+      if(e.target === canvasWrap || e.target === canvas) {
+        isPanning = true; sX = e.clientX - panX; sY = e.clientY - panY;
+      }
+    });
+    window.addEventListener('mousemove', (e) => {
+      if(isPanning) { panX = e.clientX - sX; panY = e.clientY - sY; updateCanvasTransform(); }
+    });
+    window.addEventListener('mouseup', () => isPanning = false);
+    canvasWrap.addEventListener('wheel', (e) => { e.preventDefault(); adjustZoom(e.deltaY < 0 ? 0.05 : -0.05); });
+
+    // ==========================================
+    // パレット生成
+    // ==========================================
+    window.switchTab = (tab) => {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      renderPalette();
+    };
+
+    window.renderPalette = () => {
+      const p = document.getElementById('palette');
+      const q = document.getElementById('search-palette').value.toLowerCase();
+      p.innerHTML = '';
+      
+      let dict;
+      if (currentTab === 'html') dict = HTML_DICT;
+      else if (currentTab === 'css') dict = CSS_DICT;
+      else dict = JS_DICT;
+
+      for(let [key, data] of Object.entries(dict)) {
+        if(!key.includes(q) && !data.l.includes(q)) continue;
+        
+        const el = document.createElement('div');
+        el.className = `block bg-${data.c} is-${data.s} ${data.h ? 'is-hat' : ''}`;
+        el.style.position = 'relative'; el.style.transform = 'scale(0.85)'; el.style.transformOrigin = 'left top';
+
+        let inner = `<div class="block-header"><span class="label-text">${data.l}</span></div>`;
+        if(data.s === 'c-block') inner += `<div class="block-children-wrap"></div><div class="block-footer"></div>`;
+        el.innerHTML = inner;
+
+        // 新規ドラッグ
+        el.onmousedown = (e) => {
+          e.stopPropagation();
+          const rect = canvas.getBoundingClientRect();
+          const dropX = (e.clientX - rect.left) / scale - 15;
+          const dropY = (e.clientY - rect.top) / scale - 15;
+
+          const newB = {
+            id: 'blk_' + Date.now(), tag: key, type: data.type || currentTab,
+            shape: data.s, isHat: data.h || false,
+            value: data.vType === 'color' ? '#4c97ff' : '',
+            value2: '', value3: '', // 複数インプットサポート
+            children: data.s === 'c-block' ? [] : null
+          };
+          const newStack = { id: 'stack_' + Date.now(), x: dropX, y: dropY, blocks: [newB] };
+          stacks.push(newStack);
+          
+          offsetX = 15; offsetY = 15;
+          dragStackId = newStack.id; isDragging = true; selectedId = newB.id;
+          renderCanvas(); highlightPreview();
+        };
+        p.appendChild(el);
+      }
+    };
+
+    // ==========================================
+    // DOMレンダリング & スナップロジック
+    // ==========================================
+    window.upd = (id, field, val) => { 
+      let f = findBlock(id); 
+      if(f) { 
+        f.block[field] = val; 
+        compile(); 
+      } 
+    };
+
+    function findBlock(id) {
+      let res = null;
+      function s(arr) {
+        for(let i=0; i<arr.length; i++) {
+          if(arr[i].id === id) { res = { arr, index: i, block: arr[i] }; return; }
+          if(arr[i].children) s(arr[i].children);
+          if(res) return;
+        }
+      }
+      stacks.forEach(st => s(st.blocks)); return res;
+    }
+
+    function createBlockDOM(b) {
+      let dict;
+      if (b.type === 'css-rule' || b.type === 'css') dict = CSS_DICT[b.tag];
+      else if (b.type === 'js-rule' || b.type === 'js') dict = JS_DICT[b.tag];
+      else dict = HTML_DICT[b.tag];
+
+      const el = document.createElement('div');
+      el.className = `block bg-${dict.c} is-${b.shape} ${b.isHat ? 'is-hat' : ''} ${b.children && b.children.length>0 ? 'has-children' : ''} ${b.id === selectedId ? 'selected' : ''}`;
+      el.dataset.id = b.id;
+
+      const head = document.createElement('div'); head.className = 'block-header';
+      let hc = `<span class="label-text">${dict.l}</span>`;
+      if(b.shape === 'c-block') hc += `<div class="inner-bump"></div>`; 
+      
+      if(dict.p) hc += `<span class="prefix-label">${dict.p}</span>`;
+      
+      if(b.type === 'html') {
+        if(dict.a) hc += `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.a}">`;
+        else if(dict.i || dict.p) hc += `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="名前・文字">`;
+      } else if(b.type === 'css-rule') {
+        if(dict.p || !dict.p) hc += `<input type="text" class="val-input" style="width:100px" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="名前">`;
+      } else if(b.type === 'css') {
+        if(dict.ch) {
+          hc += `<select class="val-input" onchange="upd('${b.id}','value',this.value)">${dict.ch.map(c=>`<option value="${c}" ${b.value===c?'selected':''}>${c}</option>`).join('')}</select>`;
+          if(!b.value) b.value = dict.ch[0];
+        } else if(dict.vType === 'color') {
+          hc += `<input type="color" class="val-input" value="${b.value || '#000000'}" onchange="upd('${b.id}','value',this.value)">`;
+        } else hc += `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="値">`;
+      } else if(b.type === 'js-rule' || b.type === 'js') {
+        // JSブロック向けマルチインプット構築
+        if(dict.i) hc = hc.replace('[要素]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
+        if(dict.i) hc = hc.replace('[対象]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
+        if(dict.i2) hc = hc.replace('[文字]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+        if(dict.i2) hc = hc.replace('[プロパティ]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+        if(dict.i2) hc = hc.replace('[クラス名]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+        if(dict.i3) hc = hc.replace('[値]', `<input type="text" class="val-input" value="${b.value3 || ''}" onchange="upd('${b.id}','value3',this.value)" placeholder="${dict.placeholder3}">`);
+      }
+      head.innerHTML = hc;
+      
+      head.onmousedown = (e) => {
+        if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+        e.stopPropagation();
+        const f = findBlock(b.id);
+        if(f) {
+          const detached = f.arr.splice(f.index); 
+          stacks = stacks.filter(st => st.blocks.length > 0);
+          const elRect = el.getBoundingClientRect(); const cRect = canvas.getBoundingClientRect();
+          offsetX = (e.clientX - elRect.left) / scale; offsetY = (e.clientY - elRect.top) / scale;
+          const newStack = { id: 'stack_'+Date.now(), x: (elRect.left - cRect.left)/scale, y: (elRect.top - cRect.top)/scale, blocks: detached };
+          stacks.push(newStack); dragStackId = newStack.id; isDragging = true; selectedId = b.id;
+          renderCanvas(); highlightPreview();
+        }
+      };
+      el.appendChild(head);
+
+      if(b.shape === 'c-block') {
+        const wrap = document.createElement('div'); wrap.className = 'block-children-wrap';
+        const cdiv = document.createElement('div'); cdiv.className = 'block-children';
+        if(b.children) b.children.forEach(cb => cdiv.appendChild(createBlockDOM(cb)));
+        wrap.appendChild(cdiv); el.appendChild(wrap);
+        const foot = document.createElement('div'); foot.className = 'block-footer'; el.appendChild(foot);
+      }
+      return el;
+    }
+
+    function renderCanvas() {
+      canvas.innerHTML = '';
+      stacks.forEach(st => {
+        const stEl = document.createElement('div'); stEl.className = 'stack';
+        if(st.id === dragStackId) stEl.classList.add('is-dragging');
+        stEl.style.left = st.x + 'px'; stEl.style.top = st.y + 'px';
+        st.blocks.forEach(b => stEl.appendChild(createBlockDOM(b)));
+        canvas.appendChild(stEl);
+      });
+      if(snapTarget && isDragging) {
+        snapIndicator.style.display = 'block'; snapIndicator.style.left = snapTarget.x + 'px'; snapIndicator.style.top = snapTarget.y + 'px';
+      } else snapIndicator.style.display = 'none';
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      if(isDragging && dragStackId) {
+        const st = stacks.find(s => s.id === dragStackId); if(!st) return;
+        const cRect = canvas.getBoundingClientRect();
+        st.x = (e.clientX - cRect.left) / scale - offsetX; st.y = (e.clientY - cRect.top) / scale - offsetY;
+        
+        const dragEl = document.querySelector(`.stack.is-dragging`);
+        if(dragEl) { dragEl.style.left = st.x + 'px'; dragEl.style.top = st.y + 'px'; }
+
+        snapTarget = null; let minDist = 30 * scale; const dRect = dragEl.getBoundingClientRect();
+        
+        if(!st.blocks[0].isHat) {
+          document.querySelectorAll('.block:not(.is-dragging .block)').forEach(tEl => {
+            const tId = tEl.dataset.id; const tRect = tEl.getBoundingClientRect();
+            // 下へのスナップ
+            const distAfter = Math.hypot(dRect.left - tRect.left, dRect.top - tRect.bottom);
+            if(distAfter < minDist) {
+              minDist = distAfter;
+              snapTarget = { id: tId, type: 'after', x: (tRect.left - cRect.left)/scale, y: (tRect.bottom - cRect.top)/scale - 4 }; 
+            }
+            // C型内部へのスナップ
+            if(tEl.classList.contains('is-c-block')) {
+              const hRect = tEl.querySelector('.block-header').getBoundingClientRect();
+              const inX = hRect.left + 30 * scale; const inY = hRect.bottom;
+              const distIn = Math.hypot(dRect.left - inX, dRect.top - inY);
+              if(distIn < minDist) {
+                minDist = distIn;
+                snapTarget = { id: tId, type: 'inside', x: (inX - cRect.left)/scale, y: (inY - cRect.top)/scale - 4 };
+              }
+            }
+          });
+        }
+        
+        const tb = document.getElementById('trash-bin'); const tbR = tb.getBoundingClientRect();
+        if(e.clientX > tbR.left && e.clientX < tbR.right && e.clientY > tbR.top && e.clientY < tbR.bottom) tb.classList.add('drag-hover');
+        else tb.classList.remove('drag-hover');
+        
+        if(snapTarget) { snapIndicator.style.display = 'block'; snapIndicator.style.left = snapTarget.x + 'px'; snapIndicator.style.top = snapTarget.y + 'px'; } 
+        else snapIndicator.style.display = 'none';
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if(isDragging && dragStackId) {
+        const dIdx = stacks.findIndex(s => s.id === dragStackId); const dStack = stacks[dIdx];
+        if(document.getElementById('trash-bin').classList.contains('drag-hover')) {
+          stacks.splice(dIdx, 1);
+        } else if(snapTarget) {
+          let tFound = findBlock(snapTarget.id);
+          if(tFound) {
+            if(snapTarget.type === 'after') tFound.arr.splice(tFound.index + 1, 0, ...dStack.blocks);
+            else if(snapTarget.type === 'inside') tFound.block.children.unshift(...dStack.blocks);
+            stacks.splice(dIdx, 1);
+          }
+        }
+        document.getElementById('trash-bin').classList.remove('drag-hover');
+        isDragging = false; dragStackId = null; snapTarget = null;
+        renderCanvas(); compile();
+      }
+    });
+
+    // ==========================================
+    // [究極のハイブリッドJS・CSS・HTMLコンパイラ]
+    // ==========================================
+    function compile() {
+      let hStr = "", cStr = "", jStr = "";
+      
+      // HTMLツリーのコンパイル
+      function compileHtmlNode(node, d, extraAttr = "") {
+        const ind = "  ".repeat(d); let s = "";
+        
+        if (node.tag === 'id-wrapper' || node.tag === 'class-wrapper') {
+          const attrName = node.tag === 'id-wrapper' ? 'id' : 'class';
+          const attrVal = ` ${attrName}="${node.value || ''}"`;
+          
+          if (node.children && node.children.length === 1 && node.children[0].shape === 'stack') {
+            return compileHtmlNode(node.children[0], d, extraAttr + attrVal);
+          } else {
+            s += `${ind}<div data-block-id="${node.id}"${attrVal}>\n`;
+            if(node.children) node.children.forEach(c => s += compileHtmlNode(c, d+1, ""));
+            s += `${ind}</div>\n`;
+            return s;
+          }
+        }
+
+        let attr = ` data-block-id="${node.id}"` + extraAttr;
+        if (['a', 'base', 'link', 'img', 'iframe', 'embed', 'source', 'track', 'area'].includes(node.tag) && node.value) {
+          const aName = (node.tag === 'img' || node.tag === 'iframe' || node.tag === 'embed' || node.tag === 'source' || node.tag === 'track') ? 'src' : 'href';
+          attr += ` ${aName}="${node.value}"`;
+        } else if (node.tag === 'meta' && node.value) {
+          attr += ` content="${node.value}"`;
+        } else if (node.tag === 'input' && node.value) {
+          attr += ` type="${node.value}"`;
+        }
+
+        if (node.shape === 'c-block') {
+          s += `${ind}<${node.tag}${attr}>\n`;
+          if (node.children) node.children.forEach(c => s += compileHtmlNode(c, d+1, ""));
+          s += `${ind}</${node.tag}>\n`;
+        } else {
+          const emptyTags = ['img','br','hr','input','base','link','meta','area','col','embed','source','track','wbr'];
+          if (emptyTags.includes(node.tag)) {
+            s += `${ind}<${node.tag}${attr} />\n`;
+          } else {
+            let innerText = "";
+            if (!['a', 'base', 'link', 'img', 'iframe', 'embed', 'source', 'track', 'area', 'meta', 'input'].includes(node.tag)) {
+              innerText = node.value || '';
+            } else if (node.tag === 'a') {
+              innerText = "リンク"; 
+            }
+            s += `${ind}<${node.tag}${attr}>${innerText}</${node.tag}>\n`;
+          }
+        }
+        return s;
+      }
+      
+      // CSSツリーのコンパイル
+      function bCss(arr) {
+        let s = "";
+        arr.forEach(b => {
+          if(b.type === 'css-rule') {
+            let sel = b.value || 'unknown';
+            if(b.tag === 'css-id') sel = '#' + sel;
+            if(b.tag === 'css-class') sel = '.' + sel;
+            s += `${sel} {\n`;
+            if(b.children) b.children.forEach(c => { s += `  ${c.tag}: ${c.value};\n`; });
+            s += `}\n`;
+          }
+        });
+        return s;
+      }
+
+      // JSアクションツリーの再帰コンパイル
+      function compileJsAction(node) {
+        let s = "";
+        const target = node.value ? `document.querySelector('${node.value}')` : `null`;
+        
+        switch (node.tag) {
+          case "js-set-text":
+            s += `        if(${target}) { ${target}.innerText = "${node.value2 || ''}"; }\n`;
+            break;
+          case "js-set-style":
+            s += `        if(${target}) { ${target}.style['${node.value2 || ''}'] = "${node.value3 || ''}"; }\n`;
+            break;
+          case "js-hide":
+            s += `        if(${target}) { ${target}.style.display = "none"; }\n`;
+            break;
+          case "js-show":
+            s += `        if(${target}) { ${target}.style.display = "block"; }\n`;
+            break;
+          case "js-alert":
+            s += `        alert("${node.value || ''}");\n`;
+            break;
+          case "js-toggle-class":
+            s += `        if(${target}) { ${target}.classList.toggle("${node.value2 || ''}"); }\n`;
+            break;
+        }
+        return s;
+      }
+
+      // JSツリーのメインコンパイル
+      function bJs(arr) {
+        let s = "";
+        arr.forEach(b => {
+          if(b.type === 'js-rule') {
+            const targetSel = b.value || '';
+            const eventName = b.tag === 'js-click-event' ? 'click' : 'mouseover';
+            
+            s += `    document.querySelectorAll('${targetSel}').forEach(item => {\n`;
+            s += `      item.addEventListener('${eventName}', (event) => {\n`;
+            
+            if(b.children) {
+              b.children.forEach(c => {
+                s += compileJsAction(c);
+              });
+            }
+            
+            s += `      });\n`;
+            s += `    });\n`;
+          }
+        });
+        return s;
+      }
+      
+      // HTML, CSS, JS 統合パース
+      stacks.forEach(st => {
+        if(st.blocks[0].type === 'css-rule') cStr += bCss(st.blocks) + "\n";
+        else if(st.blocks[0].type === 'js-rule') jStr += bJs(st.blocks) + "\n";
+        else hStr += compileHtmlNode(st.blocks[0], 0, "") + "\n";
+      });
+
+      // 最終HTML合成
+      let finalJS = `\n<script>\ndocument.addEventListener("DOMContentLoaded", () => {\n${jStr}});<\/script>\n`;
+      const full = `<style>\n${cStr}</style>\n\n${hStr}${jStr ? finalJS : ''}`;
+      document.getElementById('code-output').value = full;
+      
+      // プレビュー表示更新 (ロード時も連動して呼び出し)
+      const doc = document.getElementById('preview-iframe').contentWindow.document;
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><style>.eh{outline:3px solid #ff0055!important;outline-offset:2px!important;animation:p 0.8s infinite alternate!important;}@keyframes p{to{box-shadow:0 0 15px #ff0055;}} body{font-family:sans-serif;padding:10px;}</style></head><body>${hStr} <style>${cStr}</style> <script>document.addEventListener("DOMContentLoaded", () => { ${jStr} });<\/script></body></html>`);
+      doc.close();
+      
+      if(selectedId) setTimeout(highlightPreview, 50);
+    }
+
+    function highlightPreview() {
+      const doc = document.getElementById('preview-iframe').contentWindow.document;
+      doc.querySelectorAll('.eh').forEach(e => e.classList.remove('eh'));
+      if(selectedId) {
+        const t = doc.querySelector(`[data-block-id="${selectedId}"]`);
+        if(t) { t.classList.add('eh'); t.scrollIntoView({behavior:'smooth', block:'center'}); }
+      }
+    }
+
+    document.getElementById('btn-fullscreen').onclick = () => {
+      const win = window.open('about:blank', '_blank');
+      if(win) {
+        win.document.write(`<!DOCTYPE html><html><head><title>Preview</title></head><body>${document.getElementById('code-output').value}</body></html>`);
+        win.document.close();
+      } else alert("ポップアップブロックを解除してください");
+    };
+
+    // ==========================================
+    // ★★ 作品ロード・同期完全修復ロジック ★★
+    // ==========================================
+    document.getElementById('btn-save').onclick = async () => {
+      if(!activeProjectId) activeProjectId = 'prj_' + Math.random().toString(36).substr(2,9);
+      const sum = { id: activeProjectId, title: document.getElementById('project-title').value||'無題', desc: document.getElementById('project-desc').value||'なし', time: Date.now() };
+      try {
+        await set(ref(db, `summary/${activeProjectId}`), sum);
+        await set(ref(db, `projects/${activeProjectId}`), stacks);
+        alert(`保存完了！ ID: ${activeProjectId}`);
+      } catch(e) { alert("保存失敗"); }
+    };
+
+    const modal = document.getElementById('gallery-modal');
+    window.closeGallery = () => modal.style.display = 'none';
+    document.getElementById('btn-explore').onclick = async () => {
+      modal.style.display = 'flex';
+      const grid = document.getElementById('gallery-grid'); grid.innerHTML = '<div style="color:white;">読込中...</div>';
+      try {
+        const snap = await get(child(ref(db), 'summary'));
+        if(snap.exists()) {
+          window.cachedGal = Object.values(snap.val()).sort((a,b)=>b.time-a.time);
+          renderGal(window.cachedGal);
+        } else grid.innerHTML = '<div style="color:white;">作品なし</div>';
+      } catch(e) { grid.innerHTML = '<div style="color:red;">エラー</div>'; }
+    };
+
+    function renderGal(items) {
+      const g = document.getElementById('gallery-grid'); g.innerHTML = '';
+      items.forEach(i => {
+        const c = document.createElement('div'); c.className = 'project-card';
+        c.innerHTML = `<h3>${i.title}</h3><p>${i.desc}</p><div class="pid">ID: ${i.id}</div><div class="play-btn"><i class="fa-solid fa-code"></i></div>`;
+        c.onclick = async () => {
+          const snap = await get(child(ref(db), `projects/${i.id}`));
+          if(snap.exists()) {
+            // ロードデータをグローバルなstacksへ同期
+            stacks = snap.val(); 
+            activeProjectId = i.id;
+            
+            // 入力コントロールのバインド更新
+            document.getElementById('project-title').value = i.title || ''; 
+            document.getElementById('project-desc').value = i.desc || '';
+            
+            closeGallery();
+            
+            // キャンバスとコードとリアルタイムプレビューを確実に同期して強制再描画
+            renderCanvas(); 
+            compile(); 
+          }
+        };
+        g.appendChild(c);
+      });
+    }
+
+    document.getElementById('gallery-search').oninput = (e) => {
+      const q = e.target.value.toLowerCase();
+      if(window.cachedGal) renderGal(window.cachedGal.filter(i => i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)));
+    };
+
+    // 初期化サンプルデータ (JS付きインタラクティブサンプル)
+    window.onload = () => {
+      renderPalette();
+      stacks = [{
+        id: 'st1', x: 50, y: 50,
+        blocks: [
+          { id:'b1', tag:'html', type:'html', shape:'c-block', isHat:true, children:[
+            { id:'b2', tag:'id-wrapper', type:'html', shape:'c-block', value:'main-title', children:[
+              { id:'b3', tag:'h1', type:'html', shape:'stack', value:'ボタンを押してみてね！' }
+            ]},
+            { id:'b4', tag:'id-wrapper', type:'html', shape:'c-block', value:'action-btn', children:[
+              { id:'b5', tag:'button', type:'html', shape:'stack', value:'色を変えるボタン' }
+            ]}
+          ]}
+        ]
+      }, {
+        id: 'st2', x: 380, y: 50,
+        blocks: [
+          { id:'c1', tag:'css-id', type:'css-rule', shape:'c-block', isHat:true, value:'action-btn', children:[
+            { id:'c2', tag:'background-color', type:'css', shape:'stack', value:'#007acc' },
+            { id:'c3', tag:'color', type:'css', shape:'stack', value:'#ffffff' },
+            { id:'c4', tag:'padding', type:'css', shape:'stack', value:'10px' },
+            { id:'c5', tag:'border-radius', type:'css', shape:'stack', value:'8px' }
+          ]}
+        ]
+      }, {
+        id: 'st3', x: 50, y: 350,
+        blocks: [
+          { id:'j1', tag:'js-click-event', type:'js-rule', shape:'c-block', isHat:true, value:'#action-btn', children:[
+            { id:'j2', tag:'js-set-style', type:'js', shape:'stack', value:'#main-title', value2:'color', value3:'#e91e63' },
+            { id:'j3', tag:'js-set-text', type:'js', shape:'stack', value:'#main-title', value2:'色がかわったよ！' },
+            { id:'j4', tag:'js-alert', type:'js', shape:'stack', value:'JavaScriptの命令が実行されたよ！' }
+          ]}
+        ]
+      }];
+      renderCanvas(); compile();
+    };
+  </script>
+</body>
+</html>
