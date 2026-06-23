@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>BlockCraft Web - Ultimate Scratch Editor V6</title>
+  <title>BlockCraft Web - Ultimate Scratch Editor V7</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* =========================================
@@ -16,7 +16,7 @@
       --cat-grouping: #5cb712; --cat-text: #9966ff; --cat-edits: #cf63cf;
       --cat-embedded: #ff6680; --cat-tabular: #e6a23c; --cat-forms: #ff4d4d;
       --cat-interactive: #0fbdac; --cat-css-rule: #00c4b6; --cat-css: #3498db;
-      --cat-js-rule: #e91e63; --cat-js: #9c27b0;
+      --cat-js-rule: #e91e63; --cat-js: #9c27b0; --cat-js-var: #ff5722; --cat-js-calc: #00bcd4;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -179,6 +179,7 @@
     .bg-forms { --bg: var(--cat-forms); } .bg-interactive { --bg: var(--cat-interactive); }
     .bg-css-rule { --bg: var(--cat-css-rule); } .bg-css { --bg: var(--cat-css); }
     .bg-js-rule { --bg: var(--cat-js-rule); } .bg-js { --bg: var(--cat-js); }
+    .bg-js-var { --bg: var(--cat-js-var); } .bg-js-calc { --bg: var(--cat-js-calc); }
     .block-header, .block-footer { background: var(--bg); }
 
     /* ギャラリーモーダル */
@@ -197,7 +198,7 @@
 <body>
 
   <header id="header">
-    <div class="logo"><i class="fa-solid fa-cubes"></i> BlockCraft V6 (JS動き・同期完全版)</div>
+    <div class="logo"><i class="fa-solid fa-cubes"></i> BlockCraft V7 (変数・定数・本格JS対応)</div>
     <div class="meta-inputs">
       <input type="text" id="project-title" placeholder="作品のタイトル...">
       <input type="text" id="project-desc" placeholder="作品の説明をここに書く...">
@@ -597,12 +598,26 @@
     };
 
     // ==========================================
-    // ★★ JavaScript (JS動き) 完全網羅・翻訳辞書 ★★
+    // ★★ JavaScript (JS動き) 拡張完全翻訳辞書 ★★
     // ==========================================
     const JS_DICT = {
-      // JavaScript ハットブロック
+      // JavaScript ハットブロック (イベント)
       "js-click-event": { c: "js-rule", type: "js-rule", s: "c-block", h: true, l: "イベント：[要素]がクリックされたとき", i: true, placeholder: "#id または .class" },
       "js-hover-event": { c: "js-rule", type: "js-rule", s: "c-block", h: true, l: "イベント：[要素]にマウスが乗ったとき", i: true, placeholder: "#id" },
+      
+      // 変数・定数定義（新規追加）
+      "js-let-def": { c: "js-var", type: "js", s: "stack", l: "変数 [変数名] に [初期値] を代入する", i: true, i2: true, placeholder: "myVar", placeholder2: "0" },
+      "js-const-def": { c: "js-var", type: "js", s: "stack", l: "定数 [定数名] に [固定値] を決定する", i: true, i2: true, placeholder: "MY_CONST", placeholder2: "10" },
+      "js-var-set": { c: "js-var", type: "js", s: "stack", l: "変数 [変数名] の中身を [変更値] に変更する", i: true, i2: true, placeholder: "myVar", placeholder2: "1" },
+      "js-var-change-by": { c: "js-var", type: "js", s: "stack", l: "変数 [変数名] を [数値] ずつ増やす / 減らす", i: true, i2: true, placeholder: "myVar", placeholder2: "1" },
+
+      // 条件判定・If制御（新規追加）
+      "js-if-cond": { c: "js-rule", type: "js", s: "c-block", l: "もし [左の値] [比較記号] [右の値] ならば", i: true, i2: true, i3: true, placeholder: "myVar", placeholder2: "==", placeholder3: "5" },
+
+      // 四則演算・式ブロック（新規追加）
+      "js-set-text-calc": { c: "js-calc", type: "js", s: "stack", l: "[対象] の文字を、変数 [変数名] にする", i: true, i2: true, placeholder: "#id", placeholder2: "myVar" },
+      "js-set-text-inputval": { c: "js-calc", type: "js", s: "stack", l: "[対象] の文字を、入力フォーム [要素] の値にする", i: true, i2: true, placeholder: "#text-display", placeholder2: "#input-field" },
+
       // アクションブロック
       "js-set-text": { c: "js", type: "js", s: "stack", l: "[対象] の文字を [文字] にする", i: true, i2: true, placeholder: "#id", placeholder2: "こんにちは" },
       "js-set-style": { c: "js", type: "js", s: "stack", l: "[対象] のデザイン [プロパティ] を [値] にする", i: true, i2: true, i3: true, placeholder: "#id", placeholder2: "color", placeholder3: "red" },
@@ -759,12 +774,27 @@
         } else hc += `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="値">`;
       } else if(b.type === 'js-rule' || b.type === 'js') {
         // JSブロック向けマルチインプット構築
-        if(dict.i) hc = hc.replace('[要素]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
-        if(dict.i) hc = hc.replace('[対象]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
-        if(dict.i2) hc = hc.replace('[文字]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
-        if(dict.i2) hc = hc.replace('[プロパティ]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
-        if(dict.i2) hc = hc.replace('[クラス名]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
-        if(dict.i3) hc = hc.replace('[値]', `<input type="text" class="val-input" value="${b.value3 || ''}" onchange="upd('${b.id}','value3',this.value)" placeholder="${dict.placeholder3}">`);
+        if (b.tag === "js-let-def" || b.tag === "js-const-def" || b.tag === "js-var-set" || b.tag === "js-var-change-by") {
+          hc = hc.replace('[変数名]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
+          hc = hc.replace('[定数名]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
+          hc = hc.replace('[初期値]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+          hc = hc.replace('[固定値]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+          hc = hc.replace('[変更値]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+          hc = hc.replace('[数値]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+        } else if (b.tag === "js-if-cond") {
+          hc = hc.replace('[左の値]', `<input type="text" class="val-input" style="width: 50px;" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
+          hc = hc.replace('[比較記号]', `<select class="val-input" style="width: 50px;" onchange="upd('${b.id}','value2',this.value)"><option value="==" ${b.value2 === '==' ? 'selected' : ''}>==</option><option value="!=" ${b.value2 === '!=' ? 'selected' : ''}>!=</option><option value="&gt;" ${b.value2 === '>' ? 'selected' : ''}>&gt;</option><option value="&lt;" ${b.value2 === '<' ? 'selected' : ''}>&lt;</option></select>`);
+          if (!b.value2) b.value2 = '==';
+          hc = hc.replace('[右の値]', `<input type="text" class="val-input" style="width: 50px;" value="${b.value3 || ''}" onchange="upd('${b.id}','value3',this.value)" placeholder="${dict.placeholder3}">`);
+        } else {
+          if(dict.i) hc = hc.replace('[要素]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
+          if(dict.i) hc = hc.replace('[対象]', `<input type="text" class="val-input" value="${b.value || ''}" onchange="upd('${b.id}','value',this.value)" placeholder="${dict.placeholder}">`);
+          if(dict.i2) hc = hc.replace('[文字]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+          if(dict.i2) hc = hc.replace('[変数名]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+          if(dict.i2) hc = hc.replace('[プロパティ]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+          if(dict.i2) hc = hc.replace('[クラス名]', `<input type="text" class="val-input" value="${b.value2 || ''}" onchange="upd('${b.id}','value2',this.value)" placeholder="${dict.placeholder2}">`);
+          if(dict.i3) hc = hc.replace('[値]', `<input type="text" class="val-input" value="${b.value3 || ''}" onchange="upd('${b.id}','value3',this.value)" placeholder="${dict.placeholder3}">`);
+        }
       }
       head.innerHTML = hc;
       
@@ -946,6 +976,48 @@
         const target = node.value ? `document.querySelector('${node.value}')` : `null`;
         
         switch (node.tag) {
+          case "js-let-def": {
+            // 変数を宣言。ウィンドウスコープや安全性を考慮して文字列のクォートを適切に処理
+            const cleanVal = isNaN(node.value2) ? `"${node.value2 || ''}"` : (node.value2 || '0');
+            s += `        window.${node.value || 'tempVar'} = ${cleanVal};\n`;
+            break;
+          }
+          case "js-const-def": {
+            const cleanVal = isNaN(node.value2) ? `"${node.value2 || ''}"` : (node.value2 || '0');
+            s += `        window.${node.value || 'tempConst'} = ${cleanVal};\n`;
+            break;
+          }
+          case "js-var-set": {
+            const cleanVal = isNaN(node.value2) ? `"${node.value2 || ''}"` : (node.value2 || '0');
+            s += `        window.${node.value || 'tempVar'} = ${cleanVal};\n`;
+            break;
+          }
+          case "js-var-change-by": {
+            const num = isNaN(node.value2) ? 0 : Number(node.value2 || 0);
+            s += `        window.${node.value || 'tempVar'} = (Number(window.${node.value || 'tempVar'}) || 0) + (${num});\n`;
+            break;
+          }
+          case "js-if-cond": {
+            const leftVal = isNaN(node.value) ? `window.${node.value}` : (node.value || '0');
+            const rightVal = isNaN(node.value3) ? `"${node.value3 || ''}"` : (node.value3 || '0');
+            s += `        if (${leftVal} ${node.value2 || '=='} ${rightVal}) {\n`;
+            if (node.children) {
+              node.children.forEach(c => {
+                s += "  " + compileJsAction(c);
+              });
+            }
+            s += `        }\n`;
+            break;
+          }
+          case "js-set-text-calc": {
+            s += `        if(${target}) { ${target}.innerText = window.${node.value2 || 'tempVar'}; }\n`;
+            break;
+          }
+          case "js-set-text-inputval": {
+            const inputTarget = node.value2 ? `document.querySelector('${node.value2}')` : `null`;
+            s += `        if(${target} && ${inputTarget}) { ${target}.innerText = ${inputTarget}.value; }\n`;
+            break;
+          }
           case "js-set-text":
             s += `        if(${target}) { ${target}.innerText = "${node.value2 || ''}"; }\n`;
             break;
@@ -1089,38 +1161,57 @@
       if(window.cachedGal) renderGal(window.cachedGal.filter(i => i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)));
     };
 
-    // 初期化サンプルデータ (JS付きインタラクティブサンプル)
+    // 初期化サンプルデータ (本格JS・カウンターアプリ付きインタラクティブサンプル)
     window.onload = () => {
       renderPalette();
       stacks = [{
         id: 'st1', x: 50, y: 50,
         blocks: [
           { id:'b1', tag:'html', type:'html', shape:'c-block', isHat:true, children:[
-            { id:'b2', tag:'id-wrapper', type:'html', shape:'c-block', value:'main-title', children:[
-              { id:'b3', tag:'h1', type:'html', shape:'stack', value:'ボタンを押してみてね！' }
-            ]},
-            { id:'b4', tag:'id-wrapper', type:'html', shape:'c-block', value:'action-btn', children:[
-              { id:'b5', tag:'button', type:'html', shape:'stack', value:'色を変えるボタン' }
+            { id:'b2', tag:'id-wrapper', type:'html', shape:'c-block', value:'counter-container', children:[
+              { id:'b3', tag:'h1', type:'html', shape:'stack', value:'カウンターアプリ' },
+              { id:'b4', tag:'id-wrapper', type:'html', shape:'c-block', value:'num-display', children:[
+                { id:'b5', tag:'h2', type:'html', shape:'stack', value:'0' }
+              ]},
+              { id:'b6', tag:'id-wrapper', type:'html', shape:'c-block', value:'btn-up', children:[
+                { id:'b7', tag:'button', type:'html', shape:'stack', value:'数値を＋1する' }
+              ]},
+              { id:'b8', tag:'id-wrapper', type:'html', shape:'c-block', value:'btn-check', children:[
+                { id:'b9', tag:'button', type:'html', shape:'stack', value:'5になったか判定' }
+              ]}
             ]}
           ]}
         ]
       }, {
         id: 'st2', x: 380, y: 50,
         blocks: [
-          { id:'c1', tag:'css-id', type:'css-rule', shape:'c-block', isHat:true, value:'action-btn', children:[
-            { id:'c2', tag:'background-color', type:'css', shape:'stack', value:'#007acc' },
-            { id:'c3', tag:'color', type:'css', shape:'stack', value:'#ffffff' },
-            { id:'c4', tag:'padding', type:'css', shape:'stack', value:'10px' },
-            { id:'c5', tag:'border-radius', type:'css', shape:'stack', value:'8px' }
+          { id:'c1', tag:'css-id', type:'css-rule', shape:'c-block', isHat:true, value:'counter-container', children:[
+            { id:'c2', tag:'background-color', type:'css', shape:'stack', value:'#f0f4f8' },
+            { id:'c3', tag:'padding', type:'css', shape:'stack', value:'20px' },
+            { id:'c4', tag:'border-radius', type:'css', shape:'stack', value:'12px' },
+            { id:'c5', tag:'text-align', type:'css', shape:'stack', value:'center' }
           ]}
         ]
       }, {
-        id: 'st3', x: 50, y: 350,
+        id: 'st3', x: 380, y: 300,
         blocks: [
-          { id:'j1', tag:'js-click-event', type:'js-rule', shape:'c-block', isHat:true, value:'#action-btn', children:[
-            { id:'j2', tag:'js-set-style', type:'js', shape:'stack', value:'#main-title', value2:'color', value3:'#e91e63' },
-            { id:'j3', tag:'js-set-text', type:'js', shape:'stack', value:'#main-title', value2:'色がかわったよ！' },
-            { id:'j4', tag:'js-alert', type:'js', shape:'stack', value:'JavaScriptの命令が実行されたよ！' }
+          { id:'c10', tag:'css-class', type:'css-rule', shape:'c-block', isHat:true, value:'val-input', children:[
+            { id:'c11', tag:'font-size', type:'css', shape:'stack', value:'16px' }
+          ]}
+        ]
+      }, {
+        id: 'st4', x: 50, y: 350,
+        blocks: [
+          // 最初に変数「count」を0で定義しておく
+          { id:'j_def', tag:'js-let-def', type:'js', shape:'stack', value:'count', value2:'0' },
+          { id:'j1', tag:'js-click-event', type:'js-rule', shape:'c-block', isHat:true, value:'#btn-up', children:[
+            { id:'j2', tag:'js-var-change-by', type:'js', shape:'stack', value:'count', value2:'1' },
+            { id:'j3', tag:'js-set-text-calc', type:'js', shape:'stack', value:'#num-display h2', value2:'count' }
+          ]},
+          { id:'j5', tag:'js-click-event', type:'js-rule', shape:'c-block', isHat:true, value:'#btn-check', children:[
+            { id:'j6', tag:'js-if-cond', type:'js', shape:'c-block', value:'count', value2:'==', value3:'5', children:[
+              { id:'j7', tag:'js-alert', type:'js', shape:'stack', value:'おめでとう！ぴったり5になったよ！' }
+            ]}
           ]}
         ]
       }];
